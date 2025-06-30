@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<body>
+{% for message in messages %}
+<div>
+    <b>{{ "🤖" if message.role == "assistant" else "👤" }} {{ message.role.title() }}:</b>
+    {% if message.role == "assistant" %}
+    <div>{{ message.content|safe }}</div>
+    {% else %}
+    <pre>{{ message.content }}</pre>
+    {% endif %}
+    <small>{{ message.timestamp.strftime('%H:%M') }}</small>
+    <hr>
+</div>
+{% endfor %}
+
+{% if not messages %}
+<p><i>Start conversation...</i></p>
+{% endif %}
+
+<form method="post" action="/send">
+    <p>
+        <textarea name="message" rows="5" cols="35" placeholder="Type message..." required autofocus></textarea>
+    </p>
+    <p>
+        <button type="submit">Send</button>
+    </p>
+</form>
+
+<form method="post" action="/clear">
+    <p>
+        <button type="submit">Clear</button>
+    </p>
+</form>
+</body>
