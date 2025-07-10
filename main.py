@@ -3,14 +3,15 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 import markdown
-import openai
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from openai import AsyncOpenAI
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, delete, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from starlette.responses import JSONResponse
 
 DATABASE_URL = "sqlite+aiosqlite:///./chat_history.db"
 
@@ -52,8 +53,6 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 async def get_phone_number(request: Request) -> str:
     phone_number = request.headers.get("SE-Phone-Number")
@@ -65,6 +64,9 @@ async def get_phone_number(request: Request) -> str:
         )
 
     return phone_number
+
+
+ai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 async def get_session():
@@ -113,6 +115,14 @@ async def chat_page(request: Request, db: AsyncSession = Depends(get_session)):
     })
 
 
+@app.patch("/", response_class=JSONResponse)
+async def check_phone_requirement(_: Request):
+    return JSONResponse(
+        content={},
+        headers={"SE-Phone-Number-Required": "true"}
+    )
+
+
 @app.post("/send")
 async def send_message(
         request: Request,
@@ -135,7 +145,7 @@ async def send_message(
     openai_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
     try:
-        response = await openai.ChatCompletion.acreate(
+        response = await ai.chat.completions.create(
             model="gpt-4.1-mini",
             messages=openai_messages
         )
